@@ -1,30 +1,41 @@
 using GymManagement.Data;
-using GymManagement.Services;
+using GymManagement.Services.JwtService;
+using GymManagement.Core.Repositories.IntUserRepository;
+using GymManagement.Core.Services.IntUserService;
+using GymManagement.Core.Services.IntAuthService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// MySQL connection
+// ----------------------
+// 1️⃣ Database Context
+// ----------------------
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        new MySqlServerVersion(new Version(8, 0, 39))
+    ));
 
-// Allow CORS
+// ----------------------
+// 2️⃣ CORS
+// ----------------------
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:3000") // frontend URL
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
-
-// JWT Authentication
+// ----------------------
+// 3️⃣ JWT Authentication
+// ----------------------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -36,18 +47,49 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured")))
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(
+                    builder.Configuration["Jwt:Key"]
+                    ?? throw new InvalidOperationException("JWT Key is not configured")
+                )
+            )
         };
     });
 
+// ----------------------
+// 4️⃣ Role-based Authorization
+// ----------------------
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("Staff", policy => policy.RequireRole("Staff"));
+    options.AddPolicy("Member", policy => policy.RequireRole("Member"));
+});
+
+// ----------------------
+// 5️⃣ Register Services
+// ----------------------
 builder.Services.AddScoped<JwtService>();
 
+// Repositories
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Services
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// ----------------------
+// 6️⃣ Controllers & Swagger
+// ----------------------
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// ----------------------
+// 7️⃣ Middleware
+// ----------------------
 app.UseCors("AllowFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();

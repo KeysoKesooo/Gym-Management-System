@@ -1,0 +1,46 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: gym_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: GymDb
+      MYSQL_USER: gymuser
+      MYSQL_PASSWORD: gympass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - gym_network
+
+  # backend:
+  #   build: ./backend
+  #   container_name: gym_backend
+  #   depends_on:
+  #     - mysql
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=GymDb;user=gymuser;password=gympass
+  #   ports:
+  #     - "5000:8080"
+  #   networks:
+  #     - gym_network
+
+  # frontend:
+  #   build: ./frontend
+  #   container_name: gym_frontend
+  #   depends_on:
+  #     - backend
+  #   ports:
+  #     - "3000:3000"
+  #   networks:
+  #     - gym_network
+
+networks:
+  gym_network:
+
+volumes:
+  mysql_data:
