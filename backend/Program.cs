@@ -1,6 +1,8 @@
 using GymManagement.Data;
 using GymManagement.Services.JwtService;
 using GymManagement.Core.Repositories.IntUserRepository;
+using GymManagement.Core.Repositories.IntAttendanceRepository;
+using GymManagement.Core.Services.IntAttendanceService;
 using GymManagement.Core.Services.IntUserService;
 using GymManagement.Core.Services.IntAuthService;
 using Microsoft.EntityFrameworkCore;
@@ -73,10 +75,12 @@ builder.Services.AddScoped<JwtService>();
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 
 // ----------------------
 // 6️⃣ Controllers & Swagger

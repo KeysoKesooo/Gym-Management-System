@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using GymManagement.Core.Models.UserModel;
+using GymManagement.Core.Models.AttendanceModel;
+using GymManagement.Core.Models.WalkinModel;
 
 namespace GymManagement.Data
 {

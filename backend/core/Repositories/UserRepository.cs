@@ -6,51 +6,94 @@ namespace GymManagement.Core.Repositories.IntUserRepository
     {
         private static readonly List<User> _users = new();
 
-
-        public async Task<IEnumerable<User>> GetAllAsync() =>
-            await Task.FromResult(_users);
-
-        public async Task<User?> GetByIdAsync(int id)
+        public async Task<IEnumerable<User>> GetAllAsync()
         {
-            var user = _users.FirstOrDefault(u => u.Id == id);
-            return await Task.FromResult(user);
+            try
+            {
+                return await Task.FromResult(_users);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error retrieving users: " + ex.Message, ex);
+            }
         }
 
-        public async Task<User?> GetByEmailAsync(string email)
+        public Task<User?> GetByIdAsync(int id)
         {
-            var user = _users.FirstOrDefault(u => u.Email == email);
-            return await Task.FromResult(user);
+            try
+            {
+                var user = _users.FirstOrDefault(u => u.Id == id);
+                return Task.FromResult(user);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving user with ID {id}: {ex.Message}", ex);
+            }
         }
 
-        public async Task<User> AddAsync(User user)
+        public Task<User?> GetByEmailAsync(string email)
         {
-            user.Id = _users.Count + 1;
-            _users.Add(user);
-            return await Task.FromResult(user);
+            try
+            {
+                var user = _users.FirstOrDefault(u => u.Email == email);
+                return Task.FromResult(user);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving user with email {email}: {ex.Message}", ex);
+            }
         }
 
-        public async Task<User?> UpdateAsync(User user)
+        public Task<User> AddAsync(User user)
         {
-            var existing = _users.FirstOrDefault(u => u.Id == user.Id);
-            if (existing == null)
-                return null;
-
-            existing.Name = user.Name;
-            existing.Email = user.Email;
-            existing.PasswordHash = user.PasswordHash;
-            existing.Role = user.Role;
-
-            return await Task.FromResult(existing);
+            try
+            {
+                user.Id = _users.Count + 1;
+                _users.Add(user);
+                return Task.FromResult(user);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error adding new user {user.Email}: {ex.Message}", ex);
+            }
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public Task<User?> UpdateAsync(User user)
         {
-            var user = _users.FirstOrDefault(u => u.Id == id);
-            if (user == null)
-                return await Task.FromResult(false);
+            try
+            {
+                var existing = _users.FirstOrDefault(u => u.Id == user.Id);
+                if (existing == null)
+                    return Task.FromResult<User?>(null);
 
-            _users.Remove(user);
-            return await Task.FromResult(true);
+                existing.Name = user.Name;
+                existing.Email = user.Email;
+                existing.PasswordHash = user.PasswordHash;
+                existing.Role = user.Role;
+
+                return Task.FromResult<User?>(existing);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating user with ID {user.Id}: {ex.Message}", ex);
+            }
+        }
+
+        public Task<bool> DeleteAsync(int id)
+        {
+            try
+            {
+                var user = _users.FirstOrDefault(u => u.Id == id);
+                if (user == null)
+                    return Task.FromResult(false);
+
+                _users.Remove(user);
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error deleting user with ID {id}: {ex.Message}", ex);
+            }
         }
     }
 }

@@ -75,5 +75,25 @@ namespace GymManagement.Core.Services.IntAuthService
                 }
             };
         }
+
+        public async Task LogoutAsync(string token)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(token))
+                    throw new Exception("Token is required for logout");
+
+                // Optional: If using Redis/DB to blacklist tokens
+                // await _redis.StringSetAsync($"blacklist:{token}", "true", TimeSpan.FromMinutes(60));
+
+                // Otherwise, this is effectively a no-op
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error logging out: " + ex.Message, ex);
+            }
+        }
+
     }
 }

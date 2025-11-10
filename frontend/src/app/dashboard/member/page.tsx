@@ -16,35 +16,83 @@ export default function MemberDashboard() {
 
 function MemberContent({ user }: MemberContentProps) {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const fetchAttendance = async () => {
+    try {
+      const res = await fetch("http://localhost:5279/api/attendance/my", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+
+      const data: Attendance[] = await res.json();
+      setAttendance(data);
+      // check if user currently checked in (last record has no checkout)
+      const last = data[data.length - 1];
+      setIsCheckedIn(last && !last.checkOut);
+    } catch (err) {
+      console.error("Failed to fetch attendance", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    const fetchAttendance = async () => {
-      try {
-        const res = await fetch("http://localhost:5279/api/attendance/my", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const data: Attendance[] = await res.json();
-        setAttendance(data);
-      } catch (err) {
-        console.error("Failed to fetch attendance", err);
-      }
-    };
-
     fetchAttendance();
   }, []);
 
+  const handleAttendance = async () => {
+    try {
+      const res = await fetch("http://localhost:5279/api/attendance/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        await fetchAttendance();
+      } else {
+        console.error("Failed to update attendance");
+      }
+    } catch (err) {
+      console.error("Error during attendance update", err);
+    }
+  };
+
+  if (loading) return <p className="p-6 text-gray-600">Loading...</p>;
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-3xl font-bold">Member Dashboard</h1>
-      <p className="mt-2">
-        Welcome, {user.name} ({user.role})
-      </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Member Dashboard</h1>
+          <p className="mt-2 text-gray-600">
+            Welcome, {user.name} ({user.role})
+          </p>
+        </div>
+        <LogoutButton />
+      </div>
 
       <div className="mt-6 bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">📅 Attendance History</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">📅 Attendance History</h2>
+          <button
+            onClick={handleAttendance}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              isCheckedIn
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : "bg-green-500 hover:bg-green-600 text-white"
+            }`}
+          >
+            {isCheckedIn ? "Check Out" : "Check In"}
+          </button>
+        </div>
+
         {attendance.length > 0 ? (
           <table className="w-full border-collapse">
             <thead>
@@ -69,11 +117,9 @@ function MemberContent({ user }: MemberContentProps) {
             </tbody>
           </table>
         ) : (
-          <p>No attendance records found.</p>
+          <p className="text-gray-600">No attendance records found.</p>
         )}
       </div>
-
-      <LogoutButton />
     </div>
   );
 }

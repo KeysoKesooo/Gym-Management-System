@@ -6,5 +6,6 @@ namespace GymManagement.Core.Services.IntAuthService
     {
         Task<AuthResponseDto> RegisterAsync(RegisterRequest dto);  // Public member registration
         Task<AuthResponseDto> LoginAsync(LoginRequest dto);
+        Task LogoutAsync(string token);
     }
 }

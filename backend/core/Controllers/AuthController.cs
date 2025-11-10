@@ -44,5 +44,22 @@ namespace GymManagement.Controllers.AuthController
                 return Unauthorized(new { error = ex.Message });
             }
         }
+
+        // ✅ Logout
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+                await _authService.LogoutAsync(token);
+                return Ok(new { message = "Logged out successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
     }
 }
