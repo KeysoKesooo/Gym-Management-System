@@ -1,16 +1,23 @@
 using GymManagement.Core.Models.AttendanceModel;
+using GymManagement.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace GymManagement.Core.Repositories.IntAttendanceRepository
 {
     public class AttendanceRepository : IAttendanceRepository
     {
-        private static readonly List<Attendance> _attendances = new();
+        private readonly AppDbContext _context;
+
+        public AttendanceRepository(AppDbContext context)
+        {
+            _context = context;
+        }
 
         public async Task<IEnumerable<Attendance>> GetAllAttendancesAsync()
         {
             try
             {
-                return await Task.FromResult(_attendances);
+                return await _context.Attendances.ToListAsync();
             }
             catch (Exception ex)
             {
@@ -22,8 +29,9 @@ namespace GymManagement.Core.Repositories.IntAttendanceRepository
         {
             try
             {
-                var result = _attendances.Where(a => a.UserId == userId);
-                return await Task.FromResult(result);
+                return await _context.Attendances
+                                     .Where(a => a.UserId == userId)
+                                     .ToListAsync();
             }
             catch (Exception ex)
             {
@@ -35,9 +43,9 @@ namespace GymManagement.Core.Repositories.IntAttendanceRepository
         {
             try
             {
-                attendance.Id = _attendances.Count + 1;
-                _attendances.Add(attendance);
-                return await Task.FromResult(attendance);
+                _context.Attendances.Add(attendance);
+                await _context.SaveChangesAsync();
+                return attendance;
             }
             catch (Exception ex)
             {
@@ -49,15 +57,15 @@ namespace GymManagement.Core.Repositories.IntAttendanceRepository
         {
             try
             {
-                var existing = _attendances.FirstOrDefault(a => a.Id == attendance.Id);
-                if (existing == null)
-                    return null;
+                var existing = await _context.Attendances.FindAsync(attendance.Id);
+                if (existing == null) return null;
 
                 existing.CheckIn = attendance.CheckIn;
                 existing.CheckOut = attendance.CheckOut;
                 existing.UserId = attendance.UserId;
 
-                return await Task.FromResult(existing);
+                await _context.SaveChangesAsync();
+                return existing;
             }
             catch (Exception ex)
             {

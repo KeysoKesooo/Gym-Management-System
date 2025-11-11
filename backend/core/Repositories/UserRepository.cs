@@ -1,16 +1,23 @@
 using GymManagement.Core.Models.UserModel;
+using GymManagement.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace GymManagement.Core.Repositories.IntUserRepository
 {
     public class UserRepository : IUserRepository
     {
-        private static readonly List<User> _users = new();
+        private readonly AppDbContext _context;
+
+        public UserRepository(AppDbContext context)
+        {
+            _context = context;
+        }
 
         public async Task<IEnumerable<User>> GetAllAsync()
         {
             try
             {
-                return await Task.FromResult(_users);
+                return await _context.Users.ToListAsync();
             }
             catch (Exception ex)
             {
@@ -18,12 +25,11 @@ namespace GymManagement.Core.Repositories.IntUserRepository
             }
         }
 
-        public Task<User?> GetByIdAsync(int id)
+        public async Task<User?> GetByIdAsync(int id)
         {
             try
             {
-                var user = _users.FirstOrDefault(u => u.Id == id);
-                return Task.FromResult(user);
+                return await _context.Users.FindAsync(id);
             }
             catch (Exception ex)
             {
@@ -31,12 +37,11 @@ namespace GymManagement.Core.Repositories.IntUserRepository
             }
         }
 
-        public Task<User?> GetByEmailAsync(string email)
+        public async Task<User?> GetByEmailAsync(string email)
         {
             try
             {
-                var user = _users.FirstOrDefault(u => u.Email == email);
-                return Task.FromResult(user);
+                return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
             }
             catch (Exception ex)
             {
@@ -44,13 +49,13 @@ namespace GymManagement.Core.Repositories.IntUserRepository
             }
         }
 
-        public Task<User> AddAsync(User user)
+        public async Task<User> AddAsync(User user)
         {
             try
             {
-                user.Id = _users.Count + 1;
-                _users.Add(user);
-                return Task.FromResult(user);
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                return user;
             }
             catch (Exception ex)
             {
@@ -58,20 +63,20 @@ namespace GymManagement.Core.Repositories.IntUserRepository
             }
         }
 
-        public Task<User?> UpdateAsync(User user)
+        public async Task<User?> UpdateAsync(User user)
         {
             try
             {
-                var existing = _users.FirstOrDefault(u => u.Id == user.Id);
-                if (existing == null)
-                    return Task.FromResult<User?>(null);
+                var existing = await _context.Users.FindAsync(user.Id);
+                if (existing == null) return null;
 
                 existing.Name = user.Name;
                 existing.Email = user.Email;
                 existing.PasswordHash = user.PasswordHash;
                 existing.Role = user.Role;
 
-                return Task.FromResult<User?>(existing);
+                await _context.SaveChangesAsync();
+                return existing;
             }
             catch (Exception ex)
             {
@@ -79,16 +84,16 @@ namespace GymManagement.Core.Repositories.IntUserRepository
             }
         }
 
-        public Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             try
             {
-                var user = _users.FirstOrDefault(u => u.Id == id);
-                if (user == null)
-                    return Task.FromResult(false);
+                var user = await _context.Users.FindAsync(id);
+                if (user == null) return false;
 
-                _users.Remove(user);
-                return Task.FromResult(true);
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+                return true;
             }
             catch (Exception ex)
             {

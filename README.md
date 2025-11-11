@@ -10,8 +10,7 @@ Gym Management System is a full-stack application designed to streamline the dai
 }
 
 {
-"name": "John Member",
-"email": "member@gym.com",
-"password": "Member123!",
-"role": "member"
+"name": "kuya","mama", "papa"
+"email": "kuya@gym.com",
+"password": "kuya123!"
 }

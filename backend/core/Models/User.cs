@@ -13,5 +13,7 @@ namespace GymManagement.Core.Models.UserModel
         [Required] public required string Role { get; set; } = "member"; // admin, staff, member
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+
     }
 }
