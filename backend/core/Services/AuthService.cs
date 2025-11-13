@@ -3,6 +3,7 @@ using GymManagement.Core.DTOs.UserDto;
 using GymManagement.Core.Models.UserModel;
 using GymManagement.Core.Repositories.IntUserRepository;
 using GymManagement.Services.JwtService;
+using GymManagement.Core.Services.RedisService;
 using BCrypt.Net;
 
 namespace GymManagement.Core.Services.IntAuthService
@@ -11,14 +12,16 @@ namespace GymManagement.Core.Services.IntAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly JwtService _jwt;
+        private readonly RedisSessionService _redis;
 
-        public AuthService(IUserRepository userRepository, JwtService jwt)
+        public AuthService(IUserRepository userRepository, JwtService jwt, RedisSessionService redis)
         {
             _userRepository = userRepository;
             _jwt = jwt;
+            _redis = redis;
         }
 
-        // 🔹 Public registration (members only)
+        // 🔹 Register
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequest dto)
         {
             var existing = await _userRepository.GetByEmailAsync(dto.Email);
@@ -36,8 +39,8 @@ namespace GymManagement.Core.Services.IntAuthService
 
             await _userRepository.AddAsync(user);
 
-            // Generate token
-            var token = _jwt.GenerateToken(user);
+            // ✅ FIXED: call async version
+            var token = await _jwt.GenerateTokenAsync(user);
 
             return new AuthResponseDto
             {
@@ -52,7 +55,6 @@ namespace GymManagement.Core.Services.IntAuthService
                 }
             };
         }
-
         // 🔹 Login
         public async Task<AuthResponseDto> LoginAsync(LoginRequest dto)
         {
@@ -60,7 +62,8 @@ namespace GymManagement.Core.Services.IntAuthService
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
                 throw new Exception("Invalid email or password");
 
-            var token = _jwt.GenerateToken(user);
+            // ✅ FIXED: call async version
+            var token = await _jwt.GenerateTokenAsync(user);
 
             return new AuthResponseDto
             {
@@ -75,7 +78,7 @@ namespace GymManagement.Core.Services.IntAuthService
                 }
             };
         }
-
+        // 🔹 Logout
         public async Task LogoutAsync(string token)
         {
             try
@@ -83,17 +86,13 @@ namespace GymManagement.Core.Services.IntAuthService
                 if (string.IsNullOrEmpty(token))
                     throw new Exception("Token is required for logout");
 
-                // Optional: If using Redis/DB to blacklist tokens
-                // await _redis.StringSetAsync($"blacklist:{token}", "true", TimeSpan.FromMinutes(60));
-
-                // Otherwise, this is effectively a no-op
-                await Task.CompletedTask;
+                // ✅ Remove session from Redis
+                await _redis.RemoveSessionAsync(token);
             }
             catch (Exception ex)
             {
                 throw new Exception("Error logging out: " + ex.Message, ex);
             }
         }
-
     }
 }

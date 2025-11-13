@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using GymManagement.Core.DTOs.UserDto;
 using GymManagement.Core.Services.IntUserService;
 using GymManagement.Core.Services.IntAuthService;
-
+using GymManagement.Core.DTOs.AuthDto;
+using Microsoft.AspNetCore.Authorization;
 namespace GymManagement.Controllers.UsersController
 {
     [ApiController]
@@ -40,6 +41,27 @@ namespace GymManagement.Controllers.UsersController
             var users = await _userService.GetAllAsync();
             return Ok(users);
         }
+
+        [HttpGet("me")]
+        public IActionResult GetCurrentUser()
+        {
+            // Middleware attaches SessionDto to HttpContext.Items
+            if (HttpContext.Items["UserSession"] is not SessionDto session)
+                return Unauthorized(new { error = "Not logged in" });
+
+            // Optional: map to UserResponseDto if needed
+            var userDto = new UserResponseDto
+            {
+                Id = session.Id,
+                Name = session.Name,
+                Email = session.Email,
+                Role = session.Role,
+                // CreatedAt can be added if SessionDto includes it
+            };
+
+            return Ok(userDto);
+        }
+
 
         // ✅ GET user by ID
         [HttpGet("{id}")]

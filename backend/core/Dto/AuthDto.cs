@@ -24,4 +24,12 @@ namespace GymManagement.Core.DTOs.AuthDto
         public UserResponseDto User { get; set; } = default!;
     }
 
+    public class SessionDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+
 }

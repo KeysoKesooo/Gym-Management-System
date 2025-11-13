@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GymManagement.Core.Models.AttendanceModel;
 
 namespace GymManagement.Core.Models.UserModel
 {
@@ -13,6 +14,8 @@ namespace GymManagement.Core.Models.UserModel
         [Required] public required string Role { get; set; } = "member"; // admin, staff, member
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
 
     }

@@ -1,17 +1,59 @@
 using GymManagement.Data;
 using GymManagement.Services.JwtService;
+
+//Middleware
+using GymManagement.Core.Middleware.Session;
+using GymManagement.Core.Middleware.RJMiddleware;
+
+
+//User
 using GymManagement.Core.Repositories.IntUserRepository;
+using GymManagement.Core.Services.IntUserService;
+//Auth
+using GymManagement.Core.Services.IntAuthService;
+
+//Attendance
 using GymManagement.Core.Repositories.IntAttendanceRepository;
 using GymManagement.Core.Services.IntAttendanceService;
-using GymManagement.Core.Services.IntUserService;
-using GymManagement.Core.Services.IntAuthService;
+
+//Walkin
+using GymManagement.Core.Repositories.IntWalkinRepository;
+using GymManagement.Core.Services.IntWalkinService;
+
+
+//Redis Session
+using GymManagement.Core.Services.RedisService;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ----------------------
+// 1️⃣ Redis Connection
+// ----------------------
+// Read Redis config
+var redisHost = builder.Configuration["Redis:Host"] ?? "127.0.0.1";
+
+
+// Configure Redis options
+var redisOptions = new ConfigurationOptions
+{
+    EndPoints = { $"{redisHost}" },
+    ConnectRetry = 5,
+    ConnectTimeout = 10000,
+    SyncTimeout = 5000,
+    AbortOnConnectFail = false,
+    AllowAdmin = true
+};
+
+// Connect to Redis
+var redis = ConnectionMultiplexer.Connect(redisOptions);
+builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
+
 
 // ----------------------
 // 1️⃣ Database Context
@@ -82,11 +124,16 @@ builder.Services.AddScoped<JwtService>();
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+builder.Services.AddScoped<IWalkinRepository, WalkinRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IWalkinService, WalkinService>();
+builder.Services.AddSingleton<RedisSessionService>();
+
+
 
 // ----------------------
 // 6️⃣ Controllers & Swagger
@@ -104,6 +151,9 @@ app.UseCors("AllowFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseMiddleware<RedisSessionMiddleware>();
+// Use Redis JWT middleware **before authentication**
+app.UseMiddleware<RedisJwtMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 

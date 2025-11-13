@@ -51,9 +51,10 @@ namespace GymManagement.Controllers.AuthController
         {
             try
             {
-                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+                var authHeader = Request.Headers["Authorization"].ToString();
+                var token = authHeader.StartsWith("Bearer ") ? authHeader["Bearer ".Length..].Trim() : authHeader.Trim();
                 await _authService.LogoutAsync(token);
-                return Ok(new { message = "Logged out successfully" });
+                return Ok(new { message = "Logout successful" });
             }
             catch (Exception ex)
             {
