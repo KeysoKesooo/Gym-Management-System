@@ -1,7 +1,7 @@
 using StackExchange.Redis;
 using System.Text.Json;
 
-namespace GymManagement.Core.Services.RedisService
+namespace GymManagement.Core.Services.SessionService
 {
     public class RedisSessionService
     {

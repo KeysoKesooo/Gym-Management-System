@@ -5,6 +5,13 @@ using GymManagement.Services.JwtService;
 using GymManagement.Core.Middleware.Session;
 using GymManagement.Core.Middleware.RJMiddleware;
 
+//Background Job
+using GymManagement.Core.Services.QueueService;
+
+//Worker
+using GymManagement.Core.Workers.AttendanceWorker;
+using GymManagement.Core.Workers.WalkinWorker;
+using GymManagement.Core.Workers.UserWorker;
 
 //User
 using GymManagement.Core.Repositories.IntUserRepository;
@@ -22,7 +29,9 @@ using GymManagement.Core.Services.IntWalkinService;
 
 
 //Redis Session
-using GymManagement.Core.Services.RedisService;
+using GymManagement.Core.Services.SessionService;
+using GymManagement.Core.Services.CacheService;
+using GymManagement.Core.Services.RatelimiterService;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -131,7 +140,20 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IWalkinService, WalkinService>();
+
+//Background Job Queue
+builder.Services.AddSingleton<IQueueService, QueueService>();
+
+//Worker
+builder.Services.AddHostedService<AttendanceWorker>();
+builder.Services.AddHostedService<WalkinWorker>();
+builder.Services.AddHostedService<UserWorker>();
+
+// Redis
 builder.Services.AddSingleton<RedisSessionService>();
+builder.Services.AddSingleton<RedisCacheService>();
+builder.Services.AddSingleton<RedisRateLimiter>();
+
 
 
 
@@ -147,13 +169,15 @@ var app = builder.Build();
 // ----------------------
 // 7️⃣ Middleware
 // ----------------------
+
 app.UseCors("AllowFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseMiddleware<RedisSessionMiddleware>();
-// Use Redis JWT middleware **before authentication**
 app.UseMiddleware<RedisJwtMiddleware>();
+
+
 app.UseAuthentication();
 app.UseAuthorization();
 

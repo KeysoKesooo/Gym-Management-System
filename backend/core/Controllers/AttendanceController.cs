@@ -1,4 +1,4 @@
-using System.Security.Claims;
+
 using GymManagement.Core.Models.AttendanceModel;
 using GymManagement.Core.Services.IntAttendanceService;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ namespace GymManagement.Controllers.AttendanceController
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // ✅ Protects all endpoints with JWT
+    [Authorize]
     public class AttendanceController : ControllerBase
     {
         private readonly IAttendanceService _attendanceService;
@@ -18,33 +18,53 @@ namespace GymManagement.Controllers.AttendanceController
             _attendanceService = attendanceService;
         }
 
-        // 🔹 GET: api/attendance
+        // -----------------------
+        // GET all attendances (Admin)
+        // -----------------------
         [HttpGet]
         public async Task<IActionResult> GetAllAttendances()
         {
-            var result = await _attendanceService.GetAllAttendancesAsync();
-            return Ok(result);
+            try
+            {
+                var result = await _attendanceService.GetAllAttendancesAsync(User);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
-        // 🔹 GET: api/attendance/user/{userId}
+        // -----------------------
+        // GET attendances by user ID
+        // -----------------------
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetByUserId(int userId)
         {
-            var result = await _attendanceService.GetByUserIdAttendancesAsync(userId);
-            if (!result.Any())
-                return NotFound(new { message = "No attendance records found for this user." });
+            try
+            {
+                var result = await _attendanceService.GetByUserIdAttendancesAsync(userId, User);
+                if (!result.Any())
+                    return NotFound(new { message = "No attendance records found for this user." });
 
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
-        // ✅ GET: api/attendance/my
+        // -----------------------
+        // GET current user's attendance
+        // -----------------------
         [HttpGet("my")]
         public async Task<IActionResult> GetMyAttendance()
         {
             try
             {
                 var result = await _attendanceService.GetMyAttendanceAsync(User);
-                return Ok(result); // Always 200 OK, even if empty
+                return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -56,8 +76,9 @@ namespace GymManagement.Controllers.AttendanceController
             }
         }
 
-
-        // ✅ POST: api/attendance/check
+        // -----------------------
+        // Check-in / Check-out with caching and rate limiting
+        // -----------------------
         [HttpPost("check")]
         public async Task<IActionResult> CheckInOrOut()
         {
@@ -70,9 +91,15 @@ namespace GymManagement.Controllers.AttendanceController
             {
                 return Unauthorized(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
-        // 🔹 POST: api/attendance/checkin
+        // -----------------------
+        // Optional: Check-in manually
+        // -----------------------
         [HttpPost("checkin")]
         public async Task<IActionResult> CheckIn([FromBody] Attendance request)
         {
@@ -80,25 +107,33 @@ namespace GymManagement.Controllers.AttendanceController
                 return BadRequest(new { message = "Invalid request." });
 
             request.CheckIn = DateTime.UtcNow;
-            var added = await _attendanceService.AddAttendanceAsync(request);
+            var added = await _attendanceService.AddAttendanceAsync(request, User);
             return CreatedAtAction(nameof(GetByUserId), new { userId = added.UserId }, added);
         }
 
-        // 🔹 PUT: api/attendance/checkout/{id}
+        // -----------------------
+        // Optional: Check-out manually
+        // -----------------------
         [HttpPut("checkout/{id}")]
         public async Task<IActionResult> CheckOut(int id)
         {
-            var allAttendances = await _attendanceService.GetAllAttendancesAsync();
-            var attendance = allAttendances.FirstOrDefault(a => a.Id == id);
+            try
+            {
+                var allAttendances = await _attendanceService.GetAllAttendancesAsync(User);
+                var attendance = allAttendances.FirstOrDefault(a => a.Id == id);
 
-            if (attendance == null)
-                return NotFound(new { message = "Attendance not found." });
+                if (attendance == null)
+                    return NotFound(new { message = "Attendance not found." });
 
-            attendance.CheckOut = DateTime.UtcNow;
+                attendance.CheckOut = DateTime.UtcNow;
+                var updated = await _attendanceService.UpdateAttendanceAsync(attendance, User);
 
-            var updated = await _attendanceService.UpdateAttendanceAsync(attendance);
-            return Ok(updated);
+                return Ok(updated);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
-
     }
 }

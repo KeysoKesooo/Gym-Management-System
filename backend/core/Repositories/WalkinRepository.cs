@@ -1,6 +1,7 @@
 using GymManagement.Core.Models.WalkinModel;
 using GymManagement.Data;
 using Microsoft.EntityFrameworkCore;
+using GymManagement.Core.DTOs.WalkinDto;
 
 namespace GymManagement.Core.Repositories.IntWalkinRepository
 {
@@ -34,7 +35,7 @@ namespace GymManagement.Core.Repositories.IntWalkinRepository
         {
             var existing = await _context.WalkinGuests.FindAsync(guest.Id);
             if (existing == null)
-                throw new Exception("Walk-in guest not found");
+                throw new Exception($"Walk-in guest ID {guest.Id} not found");
 
             existing.Name = guest.Name;
             existing.CheckIn = guest.CheckIn;
@@ -51,6 +52,31 @@ namespace GymManagement.Core.Repositories.IntWalkinRepository
 
             _context.WalkinGuests.Remove(guest);
             await _context.SaveChangesAsync();
+        }
+
+        // ------------------------
+        // Write-behind queue processing
+        // ------------------------
+        public async Task SaveFromQueueAsync(WalkinQueueDto queueItem)
+        {
+            if (queueItem.Type == "checkin")
+            {
+                var guest = new WalkinGuest
+                {
+                    Name = queueItem.Name ?? "",
+                    CheckIn = queueItem.Time
+                };
+                await AddAsync(guest);
+            }
+            else if (queueItem.Type == "checkout")
+            {
+                var guest = await GetByIdAsync(queueItem.GuestId);
+                if (guest == null)
+                    throw new Exception($"Walk-in guest ID {queueItem.GuestId} not found");
+
+                guest.CheckOut = queueItem.Time;
+                await UpdateAsync(guest);
+            }
         }
     }
 }

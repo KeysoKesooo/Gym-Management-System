@@ -1,6 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Http;
-using GymManagement.Core.Services.RedisService;
+using GymManagement.Core.Services.SessionService;
 using GymManagement.Core.DTOs.AuthDto;
 
 

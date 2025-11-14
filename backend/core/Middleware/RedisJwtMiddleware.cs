@@ -1,8 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using GymManagement.Core.DTOs.AuthDto;
-using GymManagement.Core.DTOs.UserDto;
-using GymManagement.Core.Services.RedisService;
-using Microsoft.AspNetCore.Http;
+using GymManagement.Core.Services.SessionService;
 
 namespace GymManagement.Core.Middleware.RJMiddleware
 {
@@ -22,7 +20,14 @@ namespace GymManagement.Core.Middleware.RJMiddleware
 
         public async Task InvokeAsync(HttpContext context, RedisSessionService redisSession)
         {
-            // Skip public paths
+            // ✅ Skip OPTIONS requests (CORS preflight)
+            if (context.Request.Method == HttpMethods.Options)
+            {
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+
+            // ✅ Skip public paths
             if (_publicPaths.Any(p => context.Request.Path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase)))
             {
                 await _next(context);
@@ -49,7 +54,7 @@ namespace GymManagement.Core.Middleware.RJMiddleware
                 return;
             }
 
-            // Optionally validate JWT expiry manually
+            // Validate JWT expiry
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
             if (jwt.ValidTo < DateTime.UtcNow)
             {
@@ -62,7 +67,6 @@ namespace GymManagement.Core.Middleware.RJMiddleware
             // Attach session to HttpContext
             context.Items["UserSession"] = session;
 
-            // Call the next middleware
             await _next(context);
         }
     }

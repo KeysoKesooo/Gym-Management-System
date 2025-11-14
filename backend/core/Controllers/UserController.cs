@@ -1,17 +1,20 @@
 using Microsoft.AspNetCore.Mvc;
 using GymManagement.Core.DTOs.UserDto;
+using GymManagement.Core.DTOs.AuthDto;
 using GymManagement.Core.Services.IntUserService;
 using GymManagement.Core.Services.IntAuthService;
-using GymManagement.Core.DTOs.AuthDto;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+
 namespace GymManagement.Controllers.UsersController
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // Protect all endpoints
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly IAuthService _authService; // optional if needed
+        private readonly IAuthService _authService; // optional
 
         public UserController(IUserService userService, IAuthService authService)
         {
@@ -25,7 +28,8 @@ namespace GymManagement.Controllers.UsersController
         {
             try
             {
-                var response = await _userService.CreateAsync(dto);
+                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "member"; // current user role
+                var response = await _userService.CreateAsync(dto, role);
                 return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
             }
             catch (Exception ex)
@@ -38,56 +42,82 @@ namespace GymManagement.Controllers.UsersController
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var users = await _userService.GetAllAsync();
-            return Ok(users);
+            try
+            {
+                var users = await _userService.GetAllAsync();
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
+        // ✅ GET current user
         [HttpGet("me")]
         public IActionResult GetCurrentUser()
         {
-            // Middleware attaches SessionDto to HttpContext.Items
             if (HttpContext.Items["UserSession"] is not SessionDto session)
                 return Unauthorized(new { error = "Not logged in" });
 
-            // Optional: map to UserResponseDto if needed
             var userDto = new UserResponseDto
             {
                 Id = session.Id,
                 Name = session.Name,
                 Email = session.Email,
                 Role = session.Role,
-                // CreatedAt can be added if SessionDto includes it
             };
 
             return Ok(userDto);
         }
 
-
         // ✅ GET user by ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var user = await _userService.GetByIdAsync(id);
-            if (user == null) return NotFound(new { message = "User not found" });
-            return Ok(user);
+            try
+            {
+                var user = await _userService.GetByIdAsync(id);
+                if (user == null) return NotFound(new { message = "User not found" });
+                return Ok(user);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         // ✅ UPDATE user
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UserUpdateDto dto)
         {
-            var updated = await _userService.UpdateAsync(id, dto);
-            if (updated == null) return NotFound(new { message = "User not found" });
-            return Ok(updated);
+            try
+            {
+                var updated = await _userService.UpdateAsync(id, dto, User); // pass ClaimsPrincipal
+                if (updated == null) return NotFound(new { message = "User not found" });
+                return Ok(updated);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         // ✅ DELETE user
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _userService.DeleteAsync(id);
-            if (!deleted) return NotFound(new { message = "User not found" });
-            return Ok(new { message = "User deleted successfully" });
+            try
+            {
+                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+                var deleted = await _userService.DeleteAsync(id, role); // pass role
+                if (!deleted) return NotFound(new { message = "User not found or unauthorized" });
+                return Ok(new { message = "User deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
     }
 }

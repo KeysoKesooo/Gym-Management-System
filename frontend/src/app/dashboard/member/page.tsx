@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useEffect, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 import LogoutButton from "@/components/LogoutButton";
@@ -29,9 +28,12 @@ function MemberContent({ user }: MemberContentProps) {
       if (!res.ok) return;
 
       const data: Attendance[] = await res.json();
-      setAttendance(data);
-      // check if user currently checked in (last record has no checkout)
-      const last = data[data.length - 1];
+      // Sort newest first
+      const sorted = data.sort((a, b) => new Date(b.checkIn).getTime() - new Date(a.checkIn).getTime());
+      setAttendance(sorted);
+
+      // Determine check-in/out button state
+      const last = sorted[0];
       setIsCheckedIn(last && !last.checkOut);
     } catch (err) {
       console.error("Failed to fetch attendance", err);
@@ -102,15 +104,12 @@ function MemberContent({ user }: MemberContentProps) {
               </tr>
             </thead>
             <tbody>
-              {attendance.map((a) => (
-                <tr key={a.id}>
+              {attendance.map((a, index) => (
+                // Use unique key: ID if available, fallback to index + timestamp
+                <tr key={a.id || `${index}-${new Date(a.checkIn).getTime()}`}>
+                  <td className="p-2 border">{new Date(a.checkIn).toLocaleString()}</td>
                   <td className="p-2 border">
-                    {new Date(a.checkIn).toLocaleString()}
-                  </td>
-                  <td className="p-2 border">
-                    {a.checkOut
-                      ? new Date(a.checkOut).toLocaleString()
-                      : "Still inside"}
+                    {a.checkOut ? new Date(a.checkOut).toLocaleString() : "Still inside"}
                   </td>
                 </tr>
               ))}

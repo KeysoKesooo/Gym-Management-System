@@ -3,7 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using GymManagement.Core.Models.UserModel;
-using GymManagement.Core.Services.RedisService;
+using GymManagement.Core.Services.SessionService;
 
 namespace GymManagement.Services.JwtService
 {
