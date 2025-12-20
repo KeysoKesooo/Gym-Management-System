@@ -9,7 +9,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e:React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -33,9 +33,9 @@ export default function LoginPage() {
 
       // Redirect based on role
       const role = data.user.role.toLowerCase();
-      if (role === "admin") router.push("/dashboard/admin");
-      else if (role === "staff") router.push("/dashboard/staff");
-      else if (role === "member") router.push("/dashboard/member");
+      if (role === "admin") router.push("/admin/dashboard");
+      else if (role === "staff") router.push("/staff/dashbaord");
+      else if (role === "member") router.push("/member/dashboard");
       else setError("Unknown role, contact admin.");
     } catch (err) {
       console.error(err);
