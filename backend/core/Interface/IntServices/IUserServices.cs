@@ -6,6 +6,8 @@ namespace GymManagement.Core.Services.IntUserService
     public interface IUserService
     {
         Task<IEnumerable<UserResponseDto>> GetAllAsync();
+        Task<IEnumerable<UserResponseDto>> GetAllStaffAsync();
+        Task<IEnumerable<UserResponseDto>> GetAllMembersAsync();
         Task<UserResponseDto?> GetByIdAsync(int id);
         Task<UserResponseDto> CreateAsync(UserCreateDto dto, string role); // include role for admin/member logic
         Task<UserResponseDto?> UpdateAsync(int id, UserUpdateDto dto, ClaimsPrincipal user); // include user for rate-limit & role

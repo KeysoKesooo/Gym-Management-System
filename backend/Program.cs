@@ -4,6 +4,7 @@ using GymManagement.Services.JwtService;
 //Middleware
 using GymManagement.Core.Middleware.Session;
 using GymManagement.Core.Middleware.RJMiddleware;
+using GymManagement.Core.Middleware.RLMiddleware;
 
 //Background Job
 using GymManagement.Core.Services.QueueService;
@@ -38,6 +39,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using StackExchange.Redis;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -174,6 +176,7 @@ app.UseCors("AllowFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseMiddleware<RateLimitMiddleware>();
 app.UseMiddleware<RedisSessionMiddleware>();
 app.UseMiddleware<RedisJwtMiddleware>();
 

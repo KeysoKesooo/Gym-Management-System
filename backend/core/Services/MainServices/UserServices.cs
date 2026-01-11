@@ -37,6 +37,42 @@ namespace GymManagement.Core.Services.IntUserService
             return dtoList;
         }
 
+
+        // ------------------------
+        // GET ALL STAFF
+        // ------------------------
+
+        public async Task<IEnumerable<UserResponseDto>> GetAllStaffAsync()
+        {
+            var cacheKey = GetCacheKey();
+            var cached = await _cache.GetCacheAsync<IEnumerable<UserResponseDto>>(cacheKey);
+            if (cached != null) return cached;
+
+            var users = await _userRepository.GetByRoleAsync("staff");
+            var dtoList = users.Select(MapToDto).ToList();
+
+            await _cache.SetCacheAsync(cacheKey, dtoList, _ttl);
+            return dtoList;
+        }
+
+        // ------------------------
+        // GET ALL MEMBERS
+        // ------------------------
+
+        public async Task<IEnumerable<UserResponseDto>> GetAllMembersAsync()
+        {
+            var cacheKey = GetCacheKey();
+            var cached = await _cache.GetCacheAsync<IEnumerable<UserResponseDto>>(cacheKey);
+            if (cached != null) return cached;
+
+            var users = await _userRepository.GetByRoleAsync("member");
+            var dtoList = users.Select(MapToDto).ToList();
+
+            await _cache.SetCacheAsync(cacheKey, dtoList, _ttl);
+            return dtoList;
+        }
+
+
         // ------------------------
         // GET USER BY ID
         // ------------------------
@@ -59,6 +95,7 @@ namespace GymManagement.Core.Services.IntUserService
         // ------------------------
         public async Task<UserResponseDto> CreateAsync(UserCreateDto dto, string role)
         {
+            // 1️⃣ Map DTO to entity
             var user = new User
             {
                 Name = dto.Name,
@@ -68,18 +105,22 @@ namespace GymManagement.Core.Services.IntUserService
                 CreatedAt = DateTime.UtcNow
             };
 
-            // Update cache immediately (write-behind)
+            // 2️⃣ Save to DB first (write-through)
+            await _userRepository.AddAsync(user);
+
+            // 3️⃣ Map to DTO after DB save (now user.Id is set)
+            var tempDto = MapToDto(user);
+
+            // 4️⃣ Update cache
             var cacheKey = GetCacheKey();
             var cachedList = await _cache.GetCacheAsync<List<UserResponseDto>>(cacheKey) ?? new List<UserResponseDto>();
-            var tempDto = MapToDto(user);
             cachedList.Add(tempDto);
             await _cache.SetCacheAsync(cacheKey, cachedList, _ttl);
 
-            // Background save
-            _ = Task.Run(async () => await _userRepository.AddAsync(user));
-
+            // 5️⃣ Return DTO
             return tempDto;
         }
+
 
         // ------------------------
         // UPDATE USER (Write-behind)

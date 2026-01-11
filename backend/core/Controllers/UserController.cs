@@ -22,22 +22,6 @@ namespace GymManagement.Controllers.UsersController
             _authService = authService;
         }
 
-        // 🔹 Admin/manual creation (any role)
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] UserCreateDto dto)
-        {
-            try
-            {
-                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "member"; // current user role
-                var response = await _userService.CreateAsync(dto, role);
-                return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
-
         // ✅ GET all users
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -45,6 +29,36 @@ namespace GymManagement.Controllers.UsersController
             try
             {
                 var users = await _userService.GetAllAsync();
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // ✅ GET all users - staff
+        [HttpGet("staff")]
+        public async Task<IActionResult> GetAllStaff()
+        {
+            try
+            {
+                var users = await _userService.GetAllStaffAsync();
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // ✅ GET all users - members
+        [HttpGet("member")]
+        public async Task<IActionResult> GetAllMembers()
+        {
+            try
+            {
+                var users = await _userService.GetAllMembersAsync();
                 return Ok(users);
             }
             catch (Exception ex)
@@ -80,6 +94,22 @@ namespace GymManagement.Controllers.UsersController
                 var user = await _userService.GetByIdAsync(id);
                 if (user == null) return NotFound(new { message = "User not found" });
                 return Ok(user);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // 🔹 Admin/manual creation (any role)
+        [HttpPost("create")]
+        public async Task<IActionResult> Create([FromBody] UserCreateDto dto)
+        {
+            try
+            {
+                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "member"; // current user role
+                var response = await _userService.CreateAsync(dto, role);
+                return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
             }
             catch (Exception ex)
             {

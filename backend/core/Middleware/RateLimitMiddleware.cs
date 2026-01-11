@@ -1,7 +1,7 @@
 using GymManagement.Core.Services.RatelimiterService;
 
 
-namespace GymManagement.Core.Middleware
+namespace GymManagement.Core.Middleware.RLMiddleware
 {
     public class RateLimitMiddleware
     {

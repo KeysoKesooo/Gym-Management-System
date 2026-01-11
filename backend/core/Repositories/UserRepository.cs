@@ -25,6 +25,18 @@ namespace GymManagement.Core.Repositories.IntUserRepository
             }
         }
 
+        public async Task<IEnumerable<User>> GetByRoleAsync(string role)
+        {
+            try
+            {
+                return await _context.Users.Where(u => u.Role == role).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving users with role {role}: {ex.Message}", ex);
+            }
+        }
+
         public async Task<User?> GetByIdAsync(int id)
         {
             try

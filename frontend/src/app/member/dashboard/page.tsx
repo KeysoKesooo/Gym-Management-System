@@ -1,7 +1,6 @@
 "use client";
 
 import RequireAuth from "@/components/RequireAuth";
-import LogoutButton from "@/components/LogoutButton";
 import { SidebarProvider } from "@/context/sidebarContext";
 import { Sidebar } from "@/components/navigation/sidebar";
 import { TopNavbar } from "@/components/navigation/topNavbar";
