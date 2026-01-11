@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { User, CreateUser, UpdateUser } from "@/types/IntUser";
+import { isValidEmail, isValidPassword } from "@/utils/validators";
+
 
 const API_URL = "http://localhost:5279/api/user";
 
@@ -30,55 +32,85 @@ export default function useMember(token: string | null) {
     }
   };
 
-  // Add staff
-  const addMember = async (data: CreateUser) => {
-    if (!token) return;
-    try {
-      const payload = { ...data, role: data.role ?? "member" };
-      const res = await fetch(`${API_URL}/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(await res.text());
+const addMember = async (data: CreateUser) => {
+  if (!token) return;
 
-      const created: User = await res.json();
-      setMember((prev) => [...prev, created]);
-    } catch (err: any) {
-      console.error("Add staff failed:", err.message);
-      setError(err.message);
+  // ✅ VALIDATION ONLY
+  if (!isValidEmail(data.email)) {
+    setError("Invalid email address");
+    return;
+  }
+
+  const passwordError = isValidPassword(data.password);
+  if (passwordError) {
+    setError(passwordError);
+    return;
+  }
+
+  try {
+    const payload = { ...data, role: data.role ?? "member" };
+
+    const res = await fetch(`${API_URL}/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const created: User = await res.json();
+    setMember((prev) => [...prev, created]);
+  } catch (err: any) {
+    console.error("Add member failed:", err.message);
+    setError(err.message);
+  }
+};
+
+
+ const updateMember = async (id: number, data: UpdateUser) => {
+  if (!token || id === undefined) return;
+
+  // ✅ VALIDATION ONLY
+  if (data.email && !isValidEmail(data.email)) {
+    setError("Invalid email address");
+    return;
+  }
+
+  if (data.password) {
+    const passwordError = isValidPassword(data.password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
     }
-  };
+  }
 
-  // Update member (optional password)
-  const updateMember = async (id: number, data: UpdateUser) => {
-    if (!token || id === undefined) return;
+  try {
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined && v !== "")
+    );
 
-    try {
-      const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== undefined && v !== "")
-      );
+    const res = await fetch(`${API_URL}/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(cleanData),
+    });
 
-      const res = await fetch(`${API_URL}/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(cleanData),
-      });
+    if (!res.ok) throw new Error(await res.text());
 
-      if (!res.ok) throw new Error(await res.text());
-      const updated: User = await res.json();
-      setMember((prev) => prev.map((s) => (s.id === id ? updated : s)));
-    } catch (err: any) {
-      console.error("Update member failed:", err.message);
-      setError(err.message);
-    }
-  };
+    const updated: User = await res.json();
+    setMember((prev) => prev.map((m) => (m.id === id ? updated : m)));
+  } catch (err: any) {
+    console.error("Update member failed:", err.message);
+    setError(err.message);
+  }
+};
+
 
   // Delete member
   const deleteMember = async (id: number) => {
@@ -91,9 +123,9 @@ export default function useMember(token: string | null) {
       });
 
       if (!res.ok) throw new Error(await res.text());
-      setMember((prev) => prev.filter((s) => s.id !== id));
+      setMember((prev) => prev.filter((m) => m.id !== id));
     } catch (err: any) {
-      console.error("Delete staff failed:", err.message);
+      console.error("Delete member failed:", err.message);
       setError(err.message);
     }
   };

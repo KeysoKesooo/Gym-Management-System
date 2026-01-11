@@ -3,6 +3,7 @@ using GymManagement.Core.DTOs.UserDto;
 using GymManagement.Core.Models.UserModel;
 using GymManagement.Core.Repositories.IntUserRepository;
 using GymManagement.Core.Services.CacheService;
+using GymManagement.Core.Validators;
 
 namespace GymManagement.Core.Services.IntUserService
 {
@@ -91,10 +92,25 @@ namespace GymManagement.Core.Services.IntUserService
         }
 
         // ------------------------
-        // CREATE USER (Write-behind)
+        // ADD/CREATE USER
         // ------------------------
+
         public async Task<UserResponseDto> CreateAsync(UserCreateDto dto, string role)
         {
+            // ✅ SERVICE VALIDATION
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                throw new ArgumentException("Name is required");
+
+            if (!EmailValidator.IsValid(dto.Email))
+                throw new ArgumentException("Invalid email");
+
+            if (!PasswordValidator.IsStrong(dto.Password))
+                throw new ArgumentException("Password does not meet requirements");
+
+            // (optional business rule)
+            if (role != "admin" && dto.Role == "admin")
+                throw new UnauthorizedAccessException("Only admins can create admins");
+
             // 1️⃣ Map DTO to entity
             var user = new User
             {
@@ -105,31 +121,39 @@ namespace GymManagement.Core.Services.IntUserService
                 CreatedAt = DateTime.UtcNow
             };
 
-            // 2️⃣ Save to DB first (write-through)
+            // 2️⃣ Save to DB
             await _userRepository.AddAsync(user);
 
-            // 3️⃣ Map to DTO after DB save (now user.Id is set)
+            // 3️⃣ Cache
             var tempDto = MapToDto(user);
-
-            // 4️⃣ Update cache
             var cacheKey = GetCacheKey();
-            var cachedList = await _cache.GetCacheAsync<List<UserResponseDto>>(cacheKey) ?? new List<UserResponseDto>();
+            var cachedList = await _cache.GetCacheAsync<List<UserResponseDto>>(cacheKey) ?? new();
             cachedList.Add(tempDto);
             await _cache.SetCacheAsync(cacheKey, cachedList, _ttl);
 
-            // 5️⃣ Return DTO
             return tempDto;
         }
 
+        // ------------------------
+        // UPDATE USER
+        // ------------------------
 
-        // ------------------------
-        // UPDATE USER (Write-behind)
-        // ------------------------
         public async Task<UserResponseDto?> UpdateAsync(int id, UserUpdateDto dto, ClaimsPrincipal user)
         {
             var existing = await _userRepository.GetByIdAsync(id);
             if (existing == null) return null;
 
+            // ✅ SERVICE VALIDATION
+            if (dto.Email != null && !EmailValidator.IsValid(dto.Email))
+                throw new ArgumentException("Invalid email");
+
+            if (dto.Password != null && !PasswordValidator.IsStrong(dto.Password))
+                throw new ArgumentException("Password does not meet requirements");
+
+            if (dto.Role == "admin" && !user.IsInRole("admin"))
+                throw new UnauthorizedAccessException("Only admins can assign admin role");
+
+            // Apply changes
             existing.Name = dto.Name ?? existing.Name;
             existing.Email = dto.Email ?? existing.Email;
             existing.Role = dto.Role ?? existing.Role;
@@ -137,15 +161,16 @@ namespace GymManagement.Core.Services.IntUserService
             if (!string.IsNullOrEmpty(dto.Password))
                 existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-            // Update cache immediately
+            // Cache update
             var cacheKey = GetCacheKey(existing.Id);
             await _cache.SetCacheAsync(cacheKey, MapToDto(existing), _ttl);
 
-            // Background save
-            _ = Task.Run(async () => await _userRepository.UpdateAsync(existing));
+            // Background DB write
+            _ = Task.Run(() => _userRepository.UpdateAsync(existing));
 
             return MapToDto(existing);
         }
+
 
         // ------------------------
         // DELETE USER
